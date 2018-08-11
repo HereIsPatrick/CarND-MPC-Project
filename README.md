@@ -1,7 +1,89 @@
-# CarND-Controls-MPC
-Self-Driving Car Engineer Nanodegree Program
+# Self-Driving Car with MPC
+
+[image1]: images/MPC_Setup.png "MPC_Setup"
 
 ---
+## Objective
+This project use MPC(Model Predictive Control) technology to control udacity simulate car. MPC can solve optmization problem to find best input arguments that minimizes the cost functions base model and constraints.
+
+The MPC is consisted by state, model, constraints and cost fucntion.
+
+## State
+The state is sytem variables and errors references: [x,y,psi,v,cte,epsi]. 
+
+* x and y is for the vehicle position, 
+* psi is the vehicle orientation, 
+* v is the vehicle speed and finally, 
+* cte and epsi is for the cross track error and orientation error.
+
+
+## Model, Constraints and Cost
+![alt text][image1]
+
+* Model equations is the image as above.
+Lf measures the distance between the front of the vehicle and its center of gravity
+* Constraints
+ * steering angle is from -25 to 25
+ * acceleration and brake is from 1 to -1
+* cost function
+* ```c
+        // The part of the cost based on the reference state.
+        for (int t = 0; t < N; t++) {
+            fg[0] += (50 + t * 10) * CppAD::pow(vars[cte_start + t], 2);
+            fg[0] += (50 + t * 10) * CppAD::pow(vars[epsi_start + t], 2);
+            fg[0] += 5 * CppAD::pow(vars[v_start + t] - ref_v, 2);
+        }
+
+        // Minimize change rate.
+        for (int t = 0; t < N - 1; t++) {
+            fg[0] += 1600000 * CppAD::pow(vars[delta_start + t], 2);
+            fg[0] += 50 * CppAD::pow(vars[a_start + t], 2);
+        }
+
+        // Minimize the value gap between sequential actuations.
+        for (int i = 0; i < N - 2; i++) {
+            fg[0] += 40000 * CppAD::pow(vars[delta_start + i + 1] - vars[delta_start + i] , 2);
+            fg[0] += 10 * CppAD::pow(vars[a_start + i + 1] - vars[a_start + i] , 2);
+        }
+}
+```
+
+## Time Step and Duration(N & dt)
+
+* T(Predition horizon) equal N*dt. Higher N will have more computational cost. For this project I tried N values from 10 to 20, dt is from 0.05 to 0.2. Finally, I chose N=20, dt=0.05 that result is good. 
+
+## Latency
+Because of latency, I put the latency before predict next state.
+
+```c
+                    // Step . Set latency 0.1second
+                    double dt = 0.1;
+                    double x1=0, y1=0,  psi1=0, v1=v, cte1=cte, epsi1=epsi;
+                    x1 += v * cos(0) * dt;
+                    y1 += v * sin(0) * dt;
+                    psi1 += - v/Lf * delta * dt;
+                    v1 += a * dt;
+                    cte1 +=   v * sin(epsi1) * dt;
+                    epsi1 += - v * delta / Lf * dt;
+```
+
+## Demo
+
+# reference velocity = 70 miles
+[![MPC 70 miles](http://img.youtube.com/vi/LNQsHva3xjc/0.jpg)](https://youtu.be/LNQsHva3xjc
+ "MPC 70 miles")
+
+# reference velocity = 80 miles
+[![MPC 80 miles](http://img.youtube.com/vi/ZCAd6MSTZHk/0.jpg)](https://youtu.be/ZCAd6MSTZHk
+ "MPC 80 miles")
+ 
+# reference velocity = 100 miles
+[![MPC 100 miles](http://img.youtube.com/vi/aXCqoZm-Ul8/0.jpg)](https://youtu.be/aXCqoZm-Ul8
+ "MPC 100 miles")
+ 
+# reference velocity = 110 miles(Ha! car crash) 
+[![MPC 110 miles](http://img.youtube.com/vi/yWo6RdpJwXg/0.jpg)](https://youtu.be/yWo6RdpJwXg
+ "MPC 110 miles")
 
 ## Dependencies
 
@@ -104,5 +186,3 @@ that's just a guess.
 One last note here: regardless of the IDE used, every submitted project must
 still be compilable with cmake and make./
 
-## How to write a README
-A well written README file can enhance your project and portfolio.  Develop your abilities to create professional README files by completing [this free course](https://www.udacity.com/course/writing-readmes--ud777).
